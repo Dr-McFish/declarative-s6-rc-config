@@ -16,13 +16,16 @@ let
     inherit lib symlinkJoin runCommand;
   };
 in
-symlinkJoin {
+s6-rc-setting.inFolder {
   inherit name;
-  paths = [s6-rc-setting.indirectionWrapper {inherit name; content = [
-    (s6-rc-setting.stringProperty { name="type"; value="bundle"; })
-    (s6-rc-setting.booleanProperty { name="flag-essential"; value = flagEssential; })
-    (s6-rc-setting.booleanProperty { name="flag-recommended"; value = flagEssential; })
-    (s6-rc-setting.bundleContentList { services=contents; })
-  ];}];
+  content = symlinkJoin {
+    inherit name;
+    paths = [
+      (s6-rc-setting.stringProperty { name="type"; value="bundle"; })
+      (s6-rc-setting.booleanProperty { name="flag-essential"; value = flagEssential; })
+      (s6-rc-setting.booleanProperty { name="flag-recommended"; value = flagEssential; })
+      (s6-rc-setting.bundleContentList { services=contents; })
+    ];
+  };
 }
 

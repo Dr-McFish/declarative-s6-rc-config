@@ -1,7 +1,7 @@
-{stdenv, lib, symlinkJoin}:
+{stdenv, lib, symlinkJoin, runCommand}:
 
 let
-  s6-rc-setting = import ./create-s6-rc-setting.nix { inherit lib; };
+  s6-rc-setting = import ./create-s6-rc-setting.nix { inherit lib runCommand symlinkJoin; };
 in
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo
@@ -15,15 +15,17 @@ in
 # A list of dependencies on other s6-rc services
 , dependencies ? []
 }:
-symlinkJoin {
+s6-rc-setting.inFolder {
   inherit name;
-  paths = [
-    up
-    down
-    s6-rc-setting.stringProperty { value = "oneshot"; filename = "type"; }
-    s6-rc-setting.booleanProperty { value = flagEssential; filename = "flag-essential"; }
-    s6-rc-setting.booleanProperty { value = flagRecommended; filename = "flag-recommended"; }
-    s6-rc-setting.dependencyList { services = dependencies; }
-  ];
-  
+  content = symlinkJoin {
+    inherit name;
+    paths = [
+      up
+      down
+      (s6-rc-setting.stringProperty { value = "oneshot"; name = "type"; })
+      (s6-rc-setting.booleanProperty { value = flagEssential; name = "flag-essential"; })
+      (s6-rc-setting.booleanProperty { value = flagRecommended; name = "flag-recommended"; })
+      (s6-rc-setting.dependencyList { services = dependencies; })
+    ];
+  };
 }

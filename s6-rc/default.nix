@@ -11,13 +11,31 @@ rec {
       executable = true; 
     };
 
-  createLongrunService = pkgs.callPackage ./longrun-service.nix {};
-  createOneShotService = pkgs.callPackage ./oneshot-service.nix {};
-  createServiceBundle = pkgs.callPackage ./service-bundle.nix {};
-  lrctest = createLongrunService {
+  longrunService = pkgs.callPackage ./longrun-service.nix {};
+  oneShotService = pkgs.callPackage ./oneshot-service.nix {};
+  serviceBundle = pkgs.callPackage ./bundle.nix {};
+
+  lrctest = longrunService {
     name = "lrc-test";
     run = writeRunScript "lrc-test.run" ''
-      haha
+      #!/bin/execlineb -P
+      s6-sleep 60
+      s6-false
     '';
+  };
+  osstest = oneShotService {
+    name = "osstest";
+    up = writeRunScript "osstest.run" ''
+      #!/bin/execlineb -P
+      s6-echo hehe
+    '';
+    down = writeRunScript "osstest.run" ''
+      #!/bin/execlineb -P
+      s6-echo itsjoverToT
+    '';
+  };
+  sbtest = serviceBundle {
+    name = "sbtest";
+    contents = ["osstest" "lrctest"];
   };
 }

@@ -39,14 +39,14 @@ rec {
   # serviceList in dependences.d
   namedServiceList =
   let
-    serviceList = {services}: # services : [string]
+    serviceList = services: # services : [string]
       symlinkJoin {
         name = "s6-rc-serviceList";
-        paths = lib.forEach (service:
+        paths = lib.forEach services (service:
           runCommand "s6-rc-seviveName-${service}" {} ''
             mkdir $out && \
             touch $out/${service}
-          '') services;
+          '');
       };
   in
   {services, name}:
