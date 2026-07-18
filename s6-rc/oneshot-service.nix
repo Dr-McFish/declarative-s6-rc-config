@@ -1,7 +1,7 @@
 {stdenv, lib, symlinkJoin}:
 
 let
-  util = import ./util.nix { inherit lib; };
+  s6-rc-setting = import ./create-s6-rc-setting.nix { inherit lib; };
 in
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo
@@ -11,7 +11,7 @@ in
 # Script to run when the service is brought up (typically an execline script, but this is not mandatory)
 , up
 # Script to run when the service is brought down (typically an execline script, but this is not mandatory). null disables the script.
-, down ? util.emptyFolder
+, down ? s6-rc-setting.emptyFolder
 # A list of dependencies on other s6-rc services
 , dependencies ? []
 }:
@@ -20,10 +20,10 @@ symlinkJoin {
   paths = [
     up
     down
-    util.stringProperty { value = "oneshot"; filename = "type"; }
-    util.booleanProperty { value = flagEssential; filename = "flag-essential"; }
-    util.booleanProperty { value = flagRecommended; filename = "flag-recommended"; }
-    util.dependencyList { services = dependencies; }
+    s6-rc-setting.stringProperty { value = "oneshot"; filename = "type"; }
+    s6-rc-setting.booleanProperty { value = flagEssential; filename = "flag-essential"; }
+    s6-rc-setting.booleanProperty { value = flagRecommended; filename = "flag-recommended"; }
+    s6-rc-setting.dependencyList { services = dependencies; }
   ];
   
 }

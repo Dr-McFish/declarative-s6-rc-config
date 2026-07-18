@@ -1,6 +1,6 @@
 {lib, symlinkJoin, runCommand}:
 let
-  util = import ./util.nix {
+  s6-rc-setting = import ./create-s6-rc-setting.nix {
     inherit lib symlinkJoin runCommand;
   };
 in
@@ -12,7 +12,7 @@ in
 # Script that spawns the long running processes (a foreground process). The run process is typically an execline script, but this is not mandatory
 , run
 # Script that gets executed when the run process terminates. This finish process is typically an execline script, but this is not mandatory
-, finish ? util.emptyFolder
+, finish ? s6-rc-setting.emptyFolder
 # A list of dependencies on other s6-rc services
 , dependencies ? []
 # Number of the file descriptor that the service can use to send a readiness notification message to. null disables readiness notification
@@ -43,8 +43,7 @@ in
 , logdir
 }:
 let
-  longrunService = import ./create-longrun-service.nix {lib, symlinkJoin, runCommand};
-
+  longrunService = import ./longrun-service.nix { inherit lib symlinkJoin runCommand; };
   nameLogService = "${name}-log";
 
   mainService = longrunSerice {

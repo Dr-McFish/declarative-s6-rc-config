@@ -1,5 +1,9 @@
-{stdenv, lib, execline, logDir, logDirUser, logDirGroup, forceDisableUserChange,
- writeScript, runCommand, symlinkJoin }:
+{stdenv, lib, symlinkJoin, runCommand}:
+let
+  s6-rc-setting = import ./create-s6-rc-setting.nix {
+    inherit lib runCommand symlinkJoin;
+  };
+in
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo
 , flagEssential ? false
@@ -8,7 +12,7 @@
 # Script that spawns the long running processes (a foreground process). The run process is typically an execline script, but this is not mandatory
 , run
 # Script that gets executed when the run process terminates. This finish process is typically an execline script, but this is not mandatory
-, finish ? util.emptyFolder
+, finish ? s6-rc-setting.emptyFolder
 # A list of dependencies on other s6-rc services
 , dependencies ? []
 # Number of the file descriptor that the service can use to send a readiness notification message to. null disables readiness notification
@@ -26,55 +30,46 @@
 # Directory of environment variable configuration files to be included with the service configuration
 , env ? null
 # Longrun service for which this service produces data. The corresponding service must also declare this service as a consumer. null specifies that this service is not a producer.
-#, producerFor ? null # this is not an option because it is a producer for the log service
+, producerFor ? null
 # List of longrun services that this service should consume data from. The corresponding services must also declare this service as a producer.
 , consumerFor ? []
 # If this file exists along with a consumer-for file, and there is no producer-for file, then a bundle will automatically be created,
 # named with the content of the pipeline-name file, and containing all the services in the pipeline that ends at service.
 # The pipeline-name file is ignored if service is not a last consumer.
 , pipelineName ? null
+# TODO Specifies which groups and users that need to be created.
+, credentials ? {}
 }:
 let
-  util = import ./util.nix {
-    inherit lib runCommand symlinkJoin;
-  };
-  longrunService = import create-longrun-sevice.nix {
-    inherit lib, symlinkJoin, runCommand;
-  };
-
-  mainService = longrunService {
-    inherit name;
-    inherit flagEssential, flagRecommended,
-            run, finish, dependencies,
-            notificationFd, timeoutKill, timeoutFinish, maxDeathTally,
-            env, consumerFor, pipelineName;
-    producerFor = "${logServiceName}";
-  };
-
-  logServiceName = "${name}-log";
-  logNotificationFd = 3;
-  serviceLogDir = "${logDir}/s6-log/${name}";
-
-  run = writeScript "s6-rc-run-script-for-${name}-log" ''
-    #!${execline}/bin/execlineb -P
-
-    foreground { mkdir -p ${serviceLogDir} }
-    ${lib.optionalString (!forceDisableUserChange) ''
-      foreground { chown -R ${logDirUser}:${logDirGroup} ${serviceLogDir} }
-      s6-setuidgid ${logDirUser}
-    ''}
-    exec -c s6-log -d${toString notificationFd} ${serviceLogDir}
-  '';
-
-  logService = longrunService {
-    name = serviceName;
-    inherit run;
-    consumerFor = ["${name}"];
-    notificationFd = logNotificationFd;
-  };
+  # Somewhat annoyingly, consumer-for is not a folder with the names of the files being
+  # the services, but a text file with a service name per line.
+  consumerForFile = s6-rc-setting.optional-s6-config (consumerFor != []) (
+    s6-rc-setting.stringProperty {
+      name = "consumer-for";
+      value = lib.strings.join "\n" consumerFor;
+    });
 in
-symlinkJoin {
-  name = "${name}+log";
-  contents = [mainService, logService];
+s6-rc-setting.inFolder {
+  inherit name;
+  content = symlinkJoin {
+    name = "s6-rc-longrun-service-${name}";
+    paths = [
+      (s6-rc-setting.stringProperty { value = "longrun"; name = "type"; })
+      (s6-rc-setting.booleanProperty { value = flagEssential; name = "flag-essential"; })
+      run
+      finish
+      (s6-rc-setting.dependencyList { services = dependencies; })
+      (s6-rc-setting.intProperty { value = notificationFd; name = "notification-fd"; })
+      (s6-rc-setting.intProperty { value = timeoutKill; name = "timeout-kill"; })
+      (s6-rc-setting.intProperty { value = timeoutFinish; name = "timeout-finish"; })
+      (s6-rc-setting.intProperty { value = maxDeathTally; name = "max-death-tally"; })
+      (s6-rc-setting.stringProperty { value = downSignal; name = "down-signal"; })
+      (s6-rc-setting.inFolder { name = "data"; content = data; })
+      (s6-rc-setting.inFolder { name = "env"; content = env; })
+      (s6-rc-setting.stringProperty { value = producerFor; name = "producer-for"; })
+      consumerForFile
+      (s6-rc-setting.stringProperty { value = pipelineName; name = "pipeline-name"; })
+    ];
+  };
 }
 

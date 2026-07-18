@@ -12,17 +12,17 @@
 }:
 
 let
-  util = import ./util.nix {
+  s6-rc-setting = import ./create-s6-rc-setting.nix {
     inherit lib symlinkJoin runCommand;
   };
 in
 symlinkJoin {
   inherit name;
-  paths = [util.indirectionWrapper {inherit name; content = [
-    (util.stringProperty { name="type"; value="bundle"; })
-    (util.booleanProperty { name="flag-essential"; value = flagEssential; })
-    (util.booleanProperty { name="flag-recommended"; value = flagEssential; })
-    (util.bundleContentList { services=contents; })
+  paths = [s6-rc-setting.indirectionWrapper {inherit name; content = [
+    (s6-rc-setting.stringProperty { name="type"; value="bundle"; })
+    (s6-rc-setting.booleanProperty { name="flag-essential"; value = flagEssential; })
+    (s6-rc-setting.booleanProperty { name="flag-recommended"; value = flagEssential; })
+    (s6-rc-setting.bundleContentList { services=contents; })
   ];}];
 }
 

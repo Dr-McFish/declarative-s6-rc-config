@@ -27,7 +27,7 @@ let
 
   processes = if exprFile == null then {} else processesFun processesArgs;
 
-  createServiceBundle = import ./create-service-bundle.nix {
+  createServiceBundle = import ./service-bundle.nix {
     inherit (pkgs) stdenv lib;
   };
 
