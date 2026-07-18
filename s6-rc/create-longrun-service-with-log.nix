@@ -1,5 +1,9 @@
-{stdenv, lib, execline, logDir, logDirUser, logDirGroup, forceDisableUserChange,
- writeScript, runCommand, symlinkJoin }:
+{lib, symlinkJoin, runCommand}:
+let
+  util = import ./util.nix {
+    inherit lib symlinkJoin runCommand;
+  };
+in
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo
 , flagEssential ? false
@@ -26,55 +30,54 @@
 # Directory of environment variable configuration files to be included with the service configuration
 , env ? null
 # Longrun service for which this service produces data. The corresponding service must also declare this service as a consumer. null specifies that this service is not a producer.
-#, producerFor ? null # this is not an option because it is a producer for the log service
+, producerFor ? null
 # List of longrun services that this service should consume data from. The corresponding services must also declare this service as a producer.
 , consumerFor ? []
 # If this file exists along with a consumer-for file, and there is no producer-for file, then a bundle will automatically be created,
 # named with the content of the pipeline-name file, and containing all the services in the pipeline that ends at service.
 # The pipeline-name file is ignored if service is not a last consumer.
 , pipelineName ? null
+# TODO Specifies which groups and users that need to be created.
+, credentials ? {}
+# Where to put the logs?
+, logdir
 }:
 let
-  util = import ./util.nix {
-    inherit lib runCommand symlinkJoin;
-  };
-  longrunService = import create-longrun-sevice.nix {
-    inherit lib, symlinkJoin, runCommand;
-  };
+  longrunService = import ./create-longrun-service.nix {lib, symlinkJoin, runCommand};
 
-  mainService = longrunService {
+  nameLogService = "${name}-log";
+
+  mainService = longrunSerice {
     inherit name;
-    inherit flagEssential, flagRecommended,
-            run, finish, dependencies,
-            notificationFd, timeoutKill, timeoutFinish, maxDeathTally,
-            env, consumerFor, pipelineName;
-    producerFor = "${logServiceName}";
+    inherit flagEssential, flagRecommended;
+    inherit run, finish, dependencies, notificationFd;
+    inherit timeoutKill, timeoutKill, timeoutFinish;
+    inherit maxDeathTally, downSingnal;
+    inherit data, env;
+    inherit consumerFor, pipelineName;
+    producerFor = nameLogService; 
   };
 
-  logServiceName = "${name}-log";
   logNotificationFd = 3;
-  serviceLogDir = "${logDir}/s6-log/${name}";
-
-  run = writeScript "s6-rc-run-script-for-${name}-log" ''
+  # TODO: should the logging script be customizable?
+  # I don't really understand the purpose of a loging script in the first place.
+  logServiceRun = writeScript "run-${name}-log" ''
     #!${execline}/bin/execlineb -P
-
-    foreground { mkdir -p ${serviceLogDir} }
-    ${lib.optionalString (!forceDisableUserChange) ''
-      foreground { chown -R ${logDirUser}:${logDirGroup} ${serviceLogDir} }
-      s6-setuidgid ${logDirUser}
-    ''}
-    exec -c s6-log -d${toString notificationFd} ${serviceLogDir}
+    s6-log -d ${toString logNotificationFd} n20 s1000000 t ${logdir}/${name}
   '';
-
-  logService = longrunService {
-    name = serviceName;
-    inherit run;
-    consumerFor = ["${name}"];
+  
+  logService = longrunSerice {
+    name = nameLogService;
+    run = logServiceRun;
+    consumerFor = [name];
     notificationFd = logNotificationFd;
   };
 in
 symlinkJoin {
-  name = "${name}+log";
-  contents = [mainService, logService];
+  name = "s6-rc-config-longrun-service-${name}+s6-log";
+  content = [
+    mainService
+    logService
+  ];
 }
 

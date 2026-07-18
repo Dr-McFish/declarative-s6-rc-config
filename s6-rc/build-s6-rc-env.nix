@@ -1,5 +1,5 @@
-{ pkgs ? import <nixpkgs> { inherit system; }
-, system ? builtins.currentSystem
+{ pkgs
+, system
 , stateDir ? "/var"
 , runtimeDir ? "${stateDir}/run"
 , logDir ? "${stateDir}/log"

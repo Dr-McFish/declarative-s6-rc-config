@@ -1,12 +1,18 @@
-{stdenv, lib, createCredentials, createLogServiceForLongRunService}:
-
+{stdenv, lib, symlinkJoin, runCommand}:
+let
+  util = import ./util.nix {
+    inherit lib runCommand symlinkJoin;
+  };
+in
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo
 , flagEssential ? false
+# When importing services with the recommended flag, they will automatically be put in the active rx rather than the latent one: unless the user actively makes a change before committing the set, services with teh recommended flag be in the default bundle and be started at boot time.
+, flagRecommended ? false
 # Script that spawns the long running processes (a foreground process). The run process is typically an execline script, but this is not mandatory
 , run
 # Script that gets executed when the run process terminates. This finish process is typically an execline script, but this is not mandatory
-, finish ? null
+, finish ? util.emptyFolder
 # A list of dependencies on other s6-rc services
 , dependencies ? []
 # Number of the file descriptor that the service can use to send a readiness notification message to. null disables readiness notification
@@ -15,8 +21,6 @@
 , timeoutKill ? null
 # By default, a finish script must do its work and exit in less than 5 seconds; if it takes more than that, it is killed. This value allows you to change it.
 , timeoutFinish ? null
-# Specifies whether the supervised process should become session leader or not
-, nosetsid ? false
 # The maximum number of service death events that s6-supervise will keep track of (defaults to: 100, maximum: 4096)
 , maxDeathTally ? null
 # The signal to send to a supervised process, when it is not SIGTERM
@@ -33,60 +37,39 @@
 # named with the content of the pipeline-name file, and containing all the services in the pipeline that ends at service.
 # The pipeline-name file is ignored if service is not a last consumer.
 , pipelineName ? null
-# Automatically generates a logging longrun service that writes the output to a log file
-, autoGenerateLogService ? true
-# Specifies which groups and users that need to be created.
+# TODO Specifies which groups and users that need to be created.
 , credentials ? {}
-# Arbitrary commands executed after generating the configuration files
-, postInstall ? ""
 }:
-
 let
-  credentialsSpec = createCredentials credentials;
-
-  util = import ./util.nix {
-    inherit lib;
-  };
-
-  logService = createLogServiceForLongRunService {
-    inherit name;
-  };
-
-  _producerFor = if autoGenerateLogService then logService else producerFor;
-
-  # The service name gets a -srv suffix so that it can be paired with a -log service and put in a bundle that corresponds to: name
-  serviceName = if autoGenerateLogService then "${name}-srv" else name;
+  # Somewhat annoyingly, consumer-for is not a folder with the names of the files being
+  # the services, but a text file with a service name per line.
+  consumerForFile = util.optional-s6-config (consumerFor != []) (
+    util.stringProperty {
+      name = "consumer-for";
+      value = lib.strings.join "\n" consumerFor;
+    });
 in
-stdenv.mkDerivation {
-  name = serviceName;
-  buildCommand = ''
-    mkdir -p $out/etc/s6/sv/${serviceName}
-    cd $out/etc/s6/sv/${serviceName}
-  ''
-  + util.generateStringProperty { value = "longrun"; filename = "type"; }
-  + util.generateBooleanProperty { value = flagEssential; filename = "flag-essential"; }
-  + util.copyFile { path = run; filename = "run"; }
-  + util.copyFile { path = finish; filename = "finish"; }
-  + util.generateServiceNameList { services = dependencies; filename = "dependencies"; }
-  + util.generateIntProperty { value = notificationFd; filename = "notification-fd"; }
-  + util.generateIntProperty { value = timeoutKill; filename = "timeout-kill"; }
-  + util.generateIntProperty { value = timeoutFinish; filename = "timeout-finish"; }
-  + util.generateBooleanProperty { value = nosetsid; filename = "nosetsid"; }
-  + util.generateIntProperty { value = maxDeathTally; filename = "max-death-tally"; }
-  + util.generateStringProperty { value = downSignal; filename = "down-signal"; }
-  + util.copyDir { path = data; filename = "data"; }
-  + util.copyDir { path = env; filename = "env"; }
-  + util.generateServiceName { service = _producerFor; filename = "producer-for"; }
-  + util.generateServiceNameList { services = consumerFor; filename = "consumer-for"; }
-  + util.generateStringProperty { value = pipelineName; filename = "pipeline-name"; }
-  + lib.optionalString autoGenerateLogService ''
-    cd ..
-    ln -sfn ${logService}/etc/s6/sv/${name}-log
-  ''
-  + ''
-    ln -s ${credentialsSpec}/dysnomia-support $out/dysnomia-support
-
-    cd $TMPDIR
-    ${postInstall}
-  '';
+util.inFolder {
+  inherit name;
+  content = symlinkJoin {
+    name = "s6-rc-longrun-service-${name}";
+    paths = [
+      (util.stringProperty { value = "longrun"; name = "type"; })
+      (util.booleanProperty { value = flagEssential; name = "flag-essential"; })
+      run
+      finish
+      (util.dependencyList { services = dependencies; })
+      (util.intProperty { value = notificationFd; name = "notification-fd"; })
+      (util.intProperty { value = timeoutKill; name = "timeout-kill"; })
+      (util.intProperty { value = timeoutFinish; name = "timeout-finish"; })
+      (util.intProperty { value = maxDeathTally; name = "max-death-tally"; })
+      (util.stringProperty { value = downSignal; name = "down-signal"; })
+      (util.inFolder { name = "data"; content = data; })
+      (util.inFolder { name = "env"; content = env; })
+      (util.stringProperty { value = producerFor; name = "producer-for"; })
+      consumerForFile
+      (util.stringProperty { value = pipelineName; name = "pipeline-name"; })
+    ];
+  };
 }
+

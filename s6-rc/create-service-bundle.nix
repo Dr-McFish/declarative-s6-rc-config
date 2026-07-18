@@ -1,8 +1,10 @@
-{stdenv, lib}:
+{lib, symlinkJoin, runCommand}:
 
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo
 , flagEssential ? false
+# When importing services with the recommended flag, they will automatically be put in the active rx rather than the latent one: unless the user actively makes a change before committing the set, services with teh recommended flag be in the default bundle and be started at boot time. 
+, flagRecommended ? false
 # List of s6-rc services that are in the bundle
 , contents ? []
 # Arbitrary commands executed after generating the configuration files
@@ -11,19 +13,16 @@
 
 let
   util = import ./util.nix {
-    inherit lib;
+    inherit lib symlinkJoin runCommand;
   };
 in
-stdenv.mkDerivation {
+symlinkJoin {
   inherit name;
-  buildCommand = ''
-    mkdir -p $out/etc/s6/sv/${name}
-    cd $out/etc/s6/sv/${name}
-  ''
-  + util.generateStringProperty { value = "bundle"; filename = "type"; }
-  + util.generateBooleanProperty { value = flagEssential; filename = "flag-essential"; }
-  + (if contents == [] then util.generateBooleanProperty { value = true; filename = "contents"; }
-    else util.generateServiceNameList { services = contents; filename = "contents"; }
-    )
-  + postInstall;
+  paths = [util.indirectionWrapper {inherit name; content = [
+    (util.stringProperty { name="type"; value="bundle"; })
+    (util.booleanProperty { name="flag-essential"; value = flagEssential; })
+    (util.booleanProperty { name="flag-recommended"; value = flagEssential; })
+    (util.bundleContentList { services=contents; })
+  ];}];
 }
+
