@@ -1,7 +1,7 @@
-{stdenv, lib, symlinkJoin, runCommand}:
+{stdenv, lib, symlinkJoin, runCommand, writeTextFile}:
 
 let
-  s6-rc-setting = import ./create-s6-rc-setting.nix { inherit lib runCommand symlinkJoin; };
+  s6-rc-setting = import ./create-s6-rc-setting.nix { inherit lib runCommand symlinkJoin writeTextFile; };
 in
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo
@@ -20,8 +20,16 @@ s6-rc-setting.inFolder {
   content = symlinkJoin {
     inherit name;
     paths = [
-      up
-      down
+      (s6-rc-setting.scriptOrStringToScript {
+        script = up;
+        scriptName = "up";
+        name = "s6-rc-finish-script-for-${name}";
+      })
+      (s6-rc-setting.scriptOrStringToScript {
+        script = up;
+        scriptName = "up";
+        name = "s6-rc-finish-script-for-${name}";
+      })
       (s6-rc-setting.stringProperty { value = "oneshot"; name = "type"; })
       (s6-rc-setting.booleanProperty { value = flagEssential; name = "flag-essential"; })
       (s6-rc-setting.booleanProperty { value = flagRecommended; name = "flag-recommended"; })

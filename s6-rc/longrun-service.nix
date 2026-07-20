@@ -1,7 +1,8 @@
-{stdenv, lib, symlinkJoin, runCommand}:
+{ lib, symlinkJoin, runCommand
+, writeTextFile }:
 let
   s6-rc-setting = import ./create-s6-rc-setting.nix {
-    inherit lib runCommand symlinkJoin;
+    inherit lib runCommand symlinkJoin writeTextFile;
   };
 in
 { name
@@ -56,8 +57,17 @@ s6-rc-setting.inFolder {
     paths = [
       (s6-rc-setting.stringProperty { value = "longrun"; name = "type"; })
       (s6-rc-setting.booleanProperty { value = flagEssential; name = "flag-essential"; })
-      run
-      finish
+      (s6-rc-setting.booleanProperty { value = flagRecommended; name = "flag-recommended"; })
+      (s6-rc-setting.scriptOrStringToScript {
+        name = "s6-rc-run-script-for-${name}";
+        scriptName = "run";
+        script = run;
+      })
+      (s6-rc-setting.scriptOrStringToScript {
+        name = "s6-rc-finish-script-for-${name}";
+        scriptName = "finish";
+        script = finish;
+      })
       (s6-rc-setting.dependencyList { services = dependencies; })
       (s6-rc-setting.intProperty { value = notificationFd; name = "notification-fd"; })
       (s6-rc-setting.intProperty { value = timeoutKill; name = "timeout-kill"; })

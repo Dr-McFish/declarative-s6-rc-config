@@ -1,6 +1,8 @@
 { lib
 , runCommand
-, symlinkJoin }:
+, symlinkJoin
+, writeTextFile
+}:
 rec {
   emptyFolder = runCommand "emptyFolder" {} "mkdir $out";
   
@@ -53,11 +55,36 @@ rec {
   optional-s6-config (services != null && services != [])
     (inFolder {inherit name; content = serviceList services; });
   
-  #also shotrhand
+  #also shotrhand for convinience
   dependencyList = {services}:
     namedServiceList {inherit services; name="dependencies.d"; };
 
   bundleContentList = {services}:
     namedServiceList {inherit services; name="contents.d"; };
+
+  # returns a derivation that evaluates to a folder containing
+  # 1 file name `scriptName` with `text` as it's contents
+  writeNamedScript = {name, scriptName, text}:
+    writeTextFile {
+      inherit name text;
+      destination = "/${scriptName}";
+      executable = true; 
+    };
+
+  # If `script` is a path to a script file, return script.
+  # If `script` is a string that has the string, returns 
+  # a derivation that evaluates to a folder containing
+  # 1 file name `scriptName` with `script` as it's contents
+  # Dynamic typing style function
+  scriptOrStringToScript = {name, scriptName, script} :
+    if builtins.isPath script ||
+       (builtins.isAttrs script && script.type == "derivation") 
+    then script
+    else
+      assert builtins.isString script;
+      writeNamedScript {
+        inherit name scriptName;
+        text = script; 
+      };
 }
 
