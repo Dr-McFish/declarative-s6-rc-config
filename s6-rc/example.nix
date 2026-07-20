@@ -7,9 +7,10 @@ rec {
   longrunService = pkgs.callPackage ./longrun-service.nix {};
   oneShotService = pkgs.callPackage ./oneshot-service.nix {};
   serviceBundle = pkgs.callPackage ./bundle.nix {};
+  rcdbFromConfig = pkgs.callPackage ./rcdb-from-config.nix {};
 
   lrctest = longrunService {
-    name = "lrc-test";
+    name = "lrctest";
     run = ''
       #!/bin/execlineb -P
       s6-sleep 60
@@ -53,4 +54,9 @@ rec {
     #flagEssential = true;
     #flagRecommended = true;
   };
+
+  rcdbtest = rcdbFromConfig (pkgs.symlinkJoin {
+    name = "rcdbtest-src";
+    paths = [osstest lrctest sbtest];
+  });
 }
