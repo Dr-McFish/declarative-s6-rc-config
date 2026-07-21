@@ -10,7 +10,7 @@
 }:
 
 let
-  s6-rc-setting = import ./create-s6-rc-setting.nix {
+  s6-rc-setting = import ../create-s6-setting.nix {
     inherit lib symlinkJoin runCommand writeTextFile;
   };
 in

@@ -1,7 +1,7 @@
 {stdenv, lib, symlinkJoin, runCommand, writeTextFile}:
 
 let
-  s6-rc-setting = import ./create-s6-rc-setting.nix { inherit lib runCommand symlinkJoin writeTextFile; };
+  s6-rc-setting = import ../create-s6-setting.nix { inherit lib runCommand symlinkJoin writeTextFile; };
 in
 { name
 # When a service is flagged as essential it will not stop with the command: s6-rc -d change foo, but only: s6-rc -D change foo

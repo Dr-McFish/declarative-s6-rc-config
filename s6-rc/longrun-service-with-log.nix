@@ -1,6 +1,6 @@
 {lib, symlinkJoin, runCommand}:
 let
-  s6-rc-setting = import ./create-s6-rc-setting.nix {
+  s6-rc-setting = import ../create-s6-setting.nix {
     inherit lib symlinkJoin runCommand;
   };
 in
@@ -64,7 +64,7 @@ let
     #!${execline}/bin/execlineb -P
     s6-log -d ${toString logNotificationFd} n20 s1000000 t ${logdir}/${name}
   '';
-  
+
   logService = longrunSerice {
     name = nameLogService;
     run = logServiceRun;
