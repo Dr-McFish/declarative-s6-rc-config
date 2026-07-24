@@ -41,6 +41,7 @@ in
 , credentials ? {}
 # Where to put the logs?
 , logdir
+, custumLogScript ? null
 }:
 let
   longrunService = import ./longrun-service.nix { inherit lib symlinkJoin runCommand; };
@@ -58,11 +59,20 @@ let
   };
 
   logNotificationFd = 3;
-  # TODO: should the logging script be customizable?
-  # I don't really understand the purpose of a loging script in the first place.
+
+  logScript = if (custumLogScript != null) then
+      # forward to 1
+      # log rotations every ~day
+      # keep logs for at most 2 months
+      # Each file is at most 1MB
+      "1 n60 R86400 s1000000 ${logdir}"
+    else custumLogScript
+  };
+
   logServiceRun = writeScript "run-${name}-log" ''
-    #!${execline}/bin/execlineb -P
-    s6-log -d ${toString logNotificationFd} n20 s1000000 t ${logdir}/${name}
+    #!/bin/execlineb -P
+    s6-setuidgid ${logUser}:log
+    s6-log -d ${toString logNotificationFd} ${logScript} ${logdir}/${name}
   '';
 
   logService = longrunSerice {
