@@ -32,9 +32,10 @@ rec {
   # Used for encompasing stuff in a folder
   # TODO: is copying everything instead of symlinking it better here?
   inFolder = {name, content}:
+    let dir = builtins.dirOf (/. + name); in
     optional-s6-config (content != null)
     (runCommand "s6-rc-${name}-folder" {} ''
-      mkdir -p $out
+      mkdir -p $out${builtins.toString dir}
       ln -s ${content} $out/${name}
     '');
 
