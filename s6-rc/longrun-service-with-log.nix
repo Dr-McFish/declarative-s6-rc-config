@@ -49,12 +49,12 @@ let
 
   mainService = longrunSerice {
     inherit name;
-    inherit flagEssential, flagRecommended;
-    inherit run, finish, dependencies, notificationFd;
-    inherit timeoutKill, timeoutKill, timeoutFinish;
-    inherit maxDeathTally, downSingnal;
-    inherit data, env;
-    inherit consumerFor, pipelineName;
+    inherit flagEssential flagRecommended;
+    inherit run finish dependencies notificationFd;
+    inherit timeoutKill timeoutKill timeoutFinish;
+    inherit maxDeathTally downSingnal;
+    inherit data env;
+    inherit consumerFor pipelineName;
     producerFor = nameLogService; 
   };
 
