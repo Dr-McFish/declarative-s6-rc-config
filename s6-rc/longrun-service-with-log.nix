@@ -51,7 +51,7 @@ let
     inherit name;
     inherit flagEssential flagRecommended;
     inherit run finish dependencies notificationFd;
-    inherit timeoutKill timeoutKill timeoutFinish;
+    inherit timeoutKill timeoutFinish;
     inherit maxDeathTally downSingnal;
     inherit data env;
     inherit consumerFor pipelineName;
