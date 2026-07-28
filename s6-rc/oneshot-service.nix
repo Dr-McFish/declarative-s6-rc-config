@@ -1,4 +1,4 @@
-{stdenv, lib, symlinkJoin, runCommand, writeTextFile}:
+{lib, symlinkJoin, runCommand, writeTextFile}:
 
 let
   s6-rc-setting = import ../create-s6-setting.nix { inherit lib runCommand symlinkJoin writeTextFile; };
