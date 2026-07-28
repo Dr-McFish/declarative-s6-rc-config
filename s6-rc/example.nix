@@ -34,7 +34,8 @@ rec {
     #pipelinName = "hogwater";
   };
 
-  lrclogtest = longrunService {
+  lrclogtest = longrunServiceLog {
+    logdir = "/var/log/lrclogtest";
     name = "lrclogtest";
     run = ''
       #!/bin/execlineb -P

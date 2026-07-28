@@ -1,4 +1,5 @@
-{lib, symlinkJoin, runCommand}:
+{lib, symlinkJoin,
+ runCommand, writeTextFile }:
 let
   s6-rc-setting = import ../create-s6-setting.nix {
     inherit lib symlinkJoin runCommand;
@@ -41,42 +42,45 @@ in
 , credentials ? {}
 # Where to put the logs?
 , logdir
+, logUser ? "log"
 , custumLogScript ? null
 }:
 let
-  longrunService = import ./longrun-service.nix { inherit lib symlinkJoin runCommand; };
-  nameLogService = "${name}-log";
+  longrunService = import ./longrun-service.nix {
+    inherit lib symlinkJoin runCommand writeTextFile;
+  };
+  logServiceName = "${name}-log";
 
-  mainService = longrunSerice {
+  mainService = longrunService {
     inherit name;
     inherit flagEssential flagRecommended;
     inherit run finish dependencies notificationFd;
     inherit timeoutKill timeoutFinish;
-    inherit maxDeathTally downSingnal;
+    inherit maxDeathTally downSignal;
     inherit data env;
     inherit consumerFor pipelineName;
-    producerFor = nameLogService; 
+    producerFor = logServiceName; 
   };
 
   logNotificationFd = 3;
 
-  logScript = if (custumLogScript != null) then
+  logScript = if (custumLogScript == null) then
       # forward to 1
       # log rotations every ~day
       # keep logs for at most 2 months
       # Each file is at most 1MB
       "1 n60 R86400 s1000000 ${logdir}"
-    else custumLogScript
-  };
+    else custumLogScript;
 
-  logServiceRun = writeScript "run-${name}-log" ''
+  # writeScript "run-${name}-log" 
+  logServiceRun = ''
     #!/bin/execlineb -P
     s6-setuidgid ${logUser}:log
     s6-log -d ${toString logNotificationFd} ${logScript} ${logdir}/${name}
   '';
 
-  logService = longrunSerice {
-    name = nameLogService;
+  logService = longrunService {
+    name = logServiceName;
     run = logServiceRun;
     consumerFor = [name];
     notificationFd = logNotificationFd;
@@ -84,8 +88,8 @@ let
 in
 symlinkJoin {
   name = "s6-rc-config-longrun-service-${name}+s6-log";
-  content = [
-    mainService
+  paths = [
+    #mainService
     logService
   ];
 }

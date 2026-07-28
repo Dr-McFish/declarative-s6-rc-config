@@ -30,15 +30,15 @@ s6-rc-setting.inFolder {
   content = symlinkJoin {
     name = "s6-rc-longrun-service-${name}";
     paths = [
-      (s6-rc-setting.scriptOrStringToScript {
+      (s6-rc-setting.writeNamedScript {
         name = "s6-rc-run-script-for-${name}";
         scriptName = "run";
-        script = run;
+        text = run;
       })
-      (s6-rc-setting.scriptOrStringToScript {
+      (s6-rc-setting.writeNamedScript {
         name = "s6-rc-finish-script-for-${name}";
         scriptName = "finish";
-        script = finish;
+        text = finish;
       })
       (s6-rc-setting.intProperty { value = notificationFd; name = "notification-fd"; })
       (s6-rc-setting.intProperty { value = timeoutKill; name = "timeout-kill"; })

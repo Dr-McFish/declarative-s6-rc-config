@@ -11,7 +11,7 @@ in
 # Script to run when the service is brought up (typically an execline script, but this is not mandatory)
 , up
 # Script to run when the service is brought down (typically an execline script, but this is not mandatory). null disables the script.
-, down ? s6-rc-setting.emptyFolder
+, down ? null
 # A list of dependencies on other s6-rc services
 , dependencies ? []
 }:
@@ -20,16 +20,17 @@ s6-rc-setting.inFolder {
   content = symlinkJoin {
     inherit name;
     paths = [
-      (s6-rc-setting.scriptOrStringToScript {
-        script = up;
+      (s6-rc-setting.writeNamedScript {
+        text = up;
         scriptName = "up";
-        name = "s6-rc-finish-script-for-${name}";
+        name = "s6-rc-up-script-for-${name}";
       })
-      (s6-rc-setting.scriptOrStringToScript {
-        script = up;
-        scriptName = "up";
-        name = "s6-rc-finish-script-for-${name}";
-      })
+      (s6-rc-setting.optional-s6-config (down != null)
+        (s6-rc-setting.writeNamedScript {
+          text = down;
+          scriptName = "down";
+          name = "s6-rc-down-script-for-${name}";
+        }))
       (s6-rc-setting.stringProperty { value = "oneshot"; name = "type"; })
       (s6-rc-setting.booleanProperty { value = flagEssential; name = "flag-essential"; })
       (s6-rc-setting.booleanProperty { value = flagRecommended; name = "flag-recommended"; })

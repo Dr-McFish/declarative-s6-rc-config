@@ -58,15 +58,15 @@ s6-rc-setting.inFolder {
       (s6-rc-setting.stringProperty { value = "longrun"; name = "type"; })
       (s6-rc-setting.booleanProperty { value = flagEssential; name = "flag-essential"; })
       (s6-rc-setting.booleanProperty { value = flagRecommended; name = "flag-recommended"; })
-      (s6-rc-setting.scriptOrStringToScript {
+      (s6-rc-setting.writeNamedScript {
         name = "s6-rc-run-script-for-${name}";
         scriptName = "run";
-        script = run;
+        text = run;
       })
-      (s6-rc-setting.scriptOrStringToScript {
+      (s6-rc-setting.writeNamedScript {
         name = "s6-rc-finish-script-for-${name}";
         scriptName = "finish";
-        script = finish;
+        text = finish;
       })
       (s6-rc-setting.dependencyList { services = dependencies; })
       (s6-rc-setting.intProperty { value = notificationFd; name = "notification-fd"; })
